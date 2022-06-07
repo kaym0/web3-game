@@ -68,4 +68,29 @@ describe("Token", function () {
             console.log(answers);
         })
     })
+
+    describe("seeds", async () => {
+        it("fetches character seeds", async () => {
+            const seeds = await characters.seeds(0);
+            console.log(seeds);
+        })
+    })
+
+    describe("Simulate leveling up", async () => {
+        it("Simulates leveling up several times, then retreives stat values", async () => {
+            await characters.gainExperience(0, "200")
+            await characters.gainExperience(0, "200")
+            await characters.gainExperience(0, "200")
+            await characters.gainExperience(0, "200")
+            await characters.gainExperience(0, "200")
+            await characters.gainExperience(0, "200")
+            await characters.gainExperience(0, "200")
+
+
+            const character = await characters.getCharacter(0);
+
+
+            console.log(character);
+        })
+    })
 });

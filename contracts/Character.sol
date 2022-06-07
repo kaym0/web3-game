@@ -33,6 +33,7 @@ contract Characters is ICharacters, ERC721A, ERC721AQueryable, Operator {
     
     mapping (uint256 => Character) public characters;
     mapping (uint256 => mapping(uint256 => Equipment)) characterEquipment;
+    //mapping (uint256 => CharacterSeed) public seeds;
 
     constructor() ERC721A("","") {}
 
@@ -120,7 +121,7 @@ contract Characters is ICharacters, ERC721A, ERC721AQueryable, Operator {
      *
      */
     function toNextLevel(uint32 level) public pure returns (uint32) {
-        return (4 * level ** 2) / 5 + 2;
+        return ((4 * level ** 2) / 5) + 2;
     }
 
     /**
@@ -133,9 +134,13 @@ contract Characters is ICharacters, ERC721A, ERC721AQueryable, Operator {
      */
     function _gainLevel(Character storage character) private {
         character.exp = character.exp - toNextLevel(character.level);
+
         character.level = character.level + 1;
-        character.hp = (character.level**3) / (character.level * 3) + 10;
-        character.str = (character.level**3) / (character.level * 15) + 2;
+        character.hp = (character.level**3) / (character.level * 3) + 10 + (uint32(character.seeds.hp) * character.level / 255);
+        character.str = (character.level**3) / (character.level * 15) + 2 + (uint32(character.seeds.str) * character.level /  255);
+        character.dex = (character.level**3) / (character.level * 15) + 2 + (uint32(character.seeds.dex) * character.level /  255);
+        character.agi = (character.level**3) / (character.level * 15) + 2 + (uint32(character.seeds.agi) * character.level /  255);
+        character.def = (character.level**3) / (character.level * 15) + 2 + (uint32(character.seeds.def) * character.level /  255);
     }
 
     /**
@@ -235,7 +240,22 @@ contract Characters is ICharacters, ERC721A, ERC721AQueryable, Operator {
         uint32 dex = RandomUtil.randomSeededMinMax(2,7, seed[seed.length-4]);
         uint32 agi = RandomUtil.randomSeededMinMax(2,7, seed[seed.length-5]);
 
-        characters[index] = Character(1,0,hp,str,def,dex,agi);
+        characters[index] = Character(
+            1,
+            0,
+            hp,
+            str,
+            def,
+            dex,
+            agi,
+            CharacterSeed(
+                uint8(seed[seed.length-1]), 
+                uint8(seed[seed.length-2]), 
+                uint8(seed[seed.length-3]), 
+                uint8(seed[seed.length-4]), 
+                uint8(seed[seed.length-5])
+            )
+        );
 
         emit CharacterCreated(msg.sender, index);
         

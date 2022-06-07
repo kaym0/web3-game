@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "./access/Operator.sol";
 import "./interfaces/ICharacters.sol";
 import "./interfaces/ICoin.sol";
+import "./interfaces/IArea.sol";
 
 /**
  *
@@ -22,14 +23,14 @@ import "./interfaces/ICoin.sol";
  *  This receipt token is later used to reclaim the character which was placed inside of this contract and then burned.
  *
  */
-contract Area is ERC721, ERC721Holder, Operator {
+contract Area is ERC721, ERC721Holder, Operator, IArea {
 
-    address characters;
-    address coin;
+    address public characters;
+    address public coin;
 
-    uint256 index;
-    uint256 expRate = uint256(500 ether) / uint256(86400);
-    uint256 dropRate = uint256(100 ether) / uint256(86400);
+    uint256 public index;
+    uint256 public expRate = uint256(500 ether) / uint256(86400);
+    uint256 public dropRate = uint256(100 ether) / uint256(86400);
 
     mapping (uint256 => uint256) lastTimeUpdated;
     mapping (uint256 => uint256) successRate;
@@ -38,11 +39,6 @@ contract Area is ERC721, ERC721Holder, Operator {
         characters = _characters;
         coin = _coin;
     }
-
-    event AreaEntered(address indexed owner, uint256 characterID);
-    event AreaLeft(address indexed owner, uint256 characterID);
-
-    error NotOwner();
 
     function population() public view returns (uint256) {
         return IERC721(characters).balanceOf(address(this));
@@ -119,6 +115,11 @@ contract Area is ERC721, ERC721Holder, Operator {
         lastTimeUpdated[id] = block.timestamp;
     }
 
+    /**
+     *
+     *  @dev Collects rewards based on time spent in the area.
+     *
+     */
     function collect(uint256 id) public {
         if (ownerOf(id) != msg.sender) revert NotOwner();
         _getExperienceAndDrops(id);
