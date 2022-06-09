@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.13;
 
-import "./interfaces/ICoin.sol";
+import "./interfaces/IGems.sol";
 import "./interfaces/IEquipment.sol";
 import "./token/ERC721/extensions/IERC721AQueryable.sol";
 import "./access/Operator.sol";
@@ -26,23 +26,24 @@ contract Marketplace is Operator {
 
     uint256 public fee = 250; // 2.5%
     address public equipment;
-    address public coin;
+    address public gems;
 
     mapping (uint256 => Listing) public listings;
 
-    constructor(address _equipment, address _coin) {
+    constructor(address _equipment, address _gems) {
         equipment = _equipment;
-        coin = _coin;
+        gems = _gems;
     }
 
     struct Listing {
         address owner;
+        uint256 id;
         uint256 price;
     }
 
-    event NewListing        (uint256 indexed tokenId, address indexed owner, uint256 indexed price);
-    event ItemSold          (uint256 indexed tokenId, address indexed buyer, uint256 indexed price);
-    event ListingRemoved    (uint256 indexed tokenId, address indexed owner);
+    event NewListing            (uint256 indexed tokenId, address indexed owner, uint256 indexed price);
+    event ItemSold              (uint256 indexed tokenId, address indexed buyer, uint256 indexed price);
+    event ListingRemoved        (uint256 indexed tokenId, address indexed owner);
 
     error InsufficientPayment();
     error ItemDoesNotExist();
@@ -66,10 +67,14 @@ contract Marketplace is Operator {
      *  @dev Gets all listings and stores them in an array
      *
      */
-    function _getListingsFromIds(uint256[] memory tokenIds) internal view returns (Listing[] memory list) {
+    function _getListingsFromIds(uint256[] memory tokenIds) internal view returns (Listing[] memory) {
+        Listing[] memory list = new Listing[](tokenIds.length);
+
         for (uint i; i < tokenIds.length; i++) {
             list[i] = listings[tokenIds[i]];
         }
+
+        return list;
     }
 
     /**
@@ -81,9 +86,9 @@ contract Marketplace is Operator {
      *  @param price - The price as WEI that is being requested for the item being listed.
      *
      */
-    function add(uint256 id, uint256 price) external {
+    function listItem(uint256 id, uint256 price) external {
         IERC721AQueryable(equipment).transferFrom(msg.sender, address(this), id);
-        listings[id] = Listing(msg.sender, price);
+        listings[id] = Listing(msg.sender, id, price);
 
         emit NewListing(id, msg.sender, price);
     }

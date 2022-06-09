@@ -32,10 +32,9 @@ contract Characters is ICharacters, ERC721A, ERC721AQueryable, Operator {
     uint32 lastMintedBlock;
     
     mapping (uint256 => Character) public characters;
-    mapping (uint256 => mapping(uint256 => Equipment)) characterEquipment;
-    //mapping (uint256 => CharacterSeed) public seeds;
+    mapping (uint256 => mapping(uint256 => Equip)) characterEquipment;
 
-    constructor() ERC721A("","") {}
+    constructor() ERC721A("Character","Character") {}
 
     function initialize(address _equipment) public onlyOperator {
         equipment = IEquipment(_equipment);
@@ -59,11 +58,11 @@ contract Characters is ICharacters, ERC721A, ERC721AQueryable, Operator {
 
         if (equipment.ownerOf(equipmentId) != msg.sender) revert NotOwnerOfEquipment();
 
-        Equipment memory equip = equipment.getEquipment(equipmentId);
+        Equip memory equip = equipment.getEquipment(equipmentId);
 
         if (equip.equipped == true) revert AlreadyEquipped();
 
-        Equipment memory currentEquipment = characterEquipment[characterId][equip.slot];
+        Equip memory currentEquipment = characterEquipment[characterId][equip.slot];
 
         character.hp = character.hp + equip.hp - currentEquipment.hp;
         character.str = character.str  + equip.str - currentEquipment.str;
@@ -85,7 +84,7 @@ contract Characters is ICharacters, ERC721A, ERC721AQueryable, Operator {
      *  @return equips - An array containing the characters equipment. In order: [Weapon, Helmet, Body Armor, Gloves, Boots]
      *
      */
-    function getCharacterEquipment(uint256 id) public view returns (Equipment[] memory equips) {
+    function getCharacterEquipment(uint256 id) public view returns (Equip[] memory equips) {
         for (uint i; i < 5; i++) {
             equips[i] = (characterEquipment[id][i]);
         }
@@ -111,7 +110,7 @@ contract Characters is ICharacters, ERC721A, ERC721AQueryable, Operator {
     }
 
     /**
-     *
+     * 
      *  @dev Calculates the amount of experience required to get to the next level from a given level.
      *
      *  @param level - The current level of the character. For example, if we supply 5 as the argument, it will give the total experience 
@@ -121,7 +120,7 @@ contract Characters is ICharacters, ERC721A, ERC721AQueryable, Operator {
      *
      */
     function toNextLevel(uint32 level) public pure returns (uint32) {
-        return ((4 * level ** 2) / 5) + 2;
+        return ((4 * level ** 2) / 5) + 50;
     }
 
     /**
@@ -175,7 +174,7 @@ contract Characters is ICharacters, ERC721A, ERC721AQueryable, Operator {
      *
      *
      */
-    function getCharactersAndEquipOfOwner(address owner) public view returns (Character[] memory chars, Equipment[] memory equips) {
+    function getCharactersAndEquipOfOwner(address owner) public view returns (Character[] memory chars, Equip[] memory equips) {
          uint256[] memory tokens = tokensOfOwner(owner);
 
         for (uint i; i < tokens.length; i++) {
@@ -201,16 +200,6 @@ contract Characters is ICharacters, ERC721A, ERC721AQueryable, Operator {
         return characters[id];
     }
 
-    function testBitwise() public view returns (bytes memory) {
-        // return (abi.encodePacked(blockhash(block.number-1)), blockhash(block.number-1));
-        // bytes32 hash = blockhash(block.number-1);
-        // uint256 hashNum = uint256(hash);
-        // uint256 account = uint256(uint160(address(msg.sender)));
-        bytes memory seed = abi.encodePacked(uint256(blockhash(block.number-1))/uint256((uint160(msg.sender))));
-
-        return seed;
-    }
-
     /**
      *
      *  @dev Mints a new a character for a price. Each character is generated using a seed created from dividing the previous blockhash by their address converted to uint256. 
@@ -219,7 +208,7 @@ contract Characters is ICharacters, ERC721A, ERC721AQueryable, Operator {
      *  - The correct amount of ether must be sent with this transaction to successfully mint.
      *
      */
-    function mintCharacter() public payable {
+    function mintCharacter(string memory name) public payable {
         if (msg.value < price) revert InsufficientAmount();
 
         if (block.number != lastMintedBlock) {
@@ -241,6 +230,9 @@ contract Characters is ICharacters, ERC721A, ERC721AQueryable, Operator {
         uint32 agi = RandomUtil.randomSeededMinMax(2,7, seed[seed.length-5]);
 
         characters[index] = Character(
+            msg.sender,
+            name,
+            index,
             1,
             0,
             hp,

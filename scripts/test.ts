@@ -1,11 +1,13 @@
 import { ethers } from "hardhat";
 
 async function main() {
-    const Characters = await ethers.getContractFactory("Characters");
+    const Equipment = await ethers.getContractFactory("DreamEquipment");
 
-    const characters = Characters.attach("0x6C642597929F39dEed9150C27B312aF8b363862E");
+    const signers = await ethers.getSigners();
+    const accounts = signers.map(((account) => account.address ));
+    const equipment: any = Equipment.attach("0xe24E7A1B5fDed28EdAA704d0742462acC1F65319");
+    const tx = await equipment.getEquipmentOfOwner(accounts[0]);
 
-    const tx = await characters.getCharactersOfOwner("0x94CC285EAf470aBd3D0976C7Dfb8BC862c3Cf71F");
 
     console.log(tx);
 

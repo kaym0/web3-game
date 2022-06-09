@@ -5,6 +5,11 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 const abi = ethers.utils.defaultAbiCoder;
 
+export async function addOperator(contract: any, operator: any) {
+    const tx = await contract.addOperator(operator);
+    await tx.wait();
+}
+
 export const generateTestList = (accounts: any) => {
     accounts.pop(0);
     const list: any[] = [];
@@ -73,7 +78,7 @@ export const advanceTime = (time: any, ethers: any) => {
     });
 };
 
-export const advanceTimeAndBlock = async (time: any, ethers: any) => {
+export const advanceTimeAndBlock = async (time: number, ethers: any) => {
     await advanceTime(time, ethers);
     await advanceBlock(ethers);
 };

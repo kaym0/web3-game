@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
-import { Equipment } from "./IEquipment.sol";
-
+import { Equip } from "./IEquipment.sol";
 
 struct CharacterSeed {
     uint hp;
@@ -10,7 +9,11 @@ struct CharacterSeed {
     uint agi;
     uint dex;
 }
+
 struct Character {
+    address owner;
+    string name;
+    uint256 id;
     uint32 level;
     uint32 exp;
     uint32 hp;

@@ -267,7 +267,7 @@ contract ERC721A is IERC721A {
     /**
      * @dev See {IERC721-ownerOf}.
      */
-    function ownerOf(uint256 tokenId) public view override returns (address) {
+    function ownerOf(uint256 tokenId) public virtual view override returns (address) {
         return address(uint160(_packedOwnershipOf(tokenId)));
     }
 
@@ -552,7 +552,7 @@ contract ERC721A is IERC721A {
         address from,
         address to,
         uint256 tokenId
-    ) private {
+    ) internal virtual {
         uint256 prevOwnershipPacked = _packedOwnershipOf(tokenId);
 
         if (address(uint160(prevOwnershipPacked)) != from) revert TransferFromIncorrectOwner();

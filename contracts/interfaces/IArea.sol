@@ -4,6 +4,7 @@ pragma solidity 0.8.13;
 interface IArea {
     event AreaEntered(address indexed owner, uint256 characterID);
     event AreaLeft(address indexed owner, uint256 characterID);
+    event ExperienceAndGoldGained(uint256 indexed characterID, uint256 exp, uint256 gold);
 
     error NotOwner();
 
@@ -11,7 +12,7 @@ interface IArea {
     function exit(uint256 id) external;
     function collect(uint256 id) external;
     function characters() external view returns (address);
-    function coin() external view returns (address);
+    function gems() external view returns (address);
     function index() external view returns (uint256);
     function expRate() external view returns (uint256);
     function dropRate() external view returns (uint256);
