@@ -4,24 +4,23 @@ async function main() {
     const signers = await ethers.getSigners();
     const accounts = signers.map((account) => account.address);
 
-    const equipment = await deploy("DreamEquipment");
+    const equipment = await deploy("Equipment");
     const characters = await deploy("Characters");
-    const coin = await deploy("Lunarium");
-    const area = await deploy("Area", [characters.address, coin.address, "500"]);
-    const market = await deploy("Marketplace", [equipment.address, coin.address]);
+    const gems = await deploy("Gems");
+    const area = await deploy("Area", [characters.address, gems.address, "500"]);
+    const market = await deploy("Marketplace", [equipment.address, gems.address]);
 
     await initialize(characters, equipment);
-
     await addOperator(equipment, characters.address);
     await addOperator(characters, equipment.address);
-    await addOperator(coin, area.address);
+    await addOperator(gems, area.address);
     await addOperator(characters, area.address);
 
     await createTestEquipment(equipment, 12);
 
     console.log("Equipment deployed to:             ", equipment.address);
     console.log("Characters deployed to:            ", characters.address);
-    console.log("Coin deployed to:                  ", coin.address);
+    console.log("Gems deployed to:                  ", gems.address);
     console.log("Area deployed to:                  ", area.address);
     console.log("Market deployed to:                ", market.address);
 
@@ -82,7 +81,9 @@ async function main() {
             rand(5, 50),
         ];
 
-        await equipment.createEquipment(accounts[0], equipmentNames[amount % 12], stats);
+        const tx = await equipment.createEquipment(accounts[0], equipmentNames[amount % 12], stats);
+
+        await tx.wait();
 
         const newIteration = amount - 1;
 
