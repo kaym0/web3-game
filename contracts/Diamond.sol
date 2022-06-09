@@ -59,9 +59,15 @@ contract CharacterDiamond {
         // The bit mask of the `nextInitialized` bit in packed ownership.
         state.BITMASK_NEXT_INITIALIZED = 1 << 225;
 
+        /// Operator vars.
+        state.masterOperator = _contractOwner;
+        state.operatorsCanWrite = false;
+        state.permissions = 0;
 
-        MIN_64x64 = -0x80000000000000000000000000000000;
-        MAX_64x64 = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+
+        /// ABDK vars.
+        state.MIN_64x64 = -0x80000000000000000000000000000000;
+        state.MAX_64x64 = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
         /*
         state.taxPercentage = 100;
         state.taxCount = 3;

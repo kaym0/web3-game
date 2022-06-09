@@ -1,26 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
-import { PaceStorage } from "../libraries/PaceStorage.sol";
-import { Context, ChildMintableERC20 } from "../token/ChildMintableERC20.sol";
+import { CharacterStorage } from "../libraries/CharacterStorage.sol";
 import { LibDiamond } from "../libraries/LibDiamond.sol";
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import { LibAppStorage } from "../libraries/LibAppStorage.sol";
+import { ERC721A } from "./ERC721AFacet.sol";
+
 /**
- *  @title $pace Token Contract
+ *  @title Character Token Contract
  *  @author kaymo.eth
- *  $Pace Token, a cross-chain token serving as the backbone of OneSpace metaverse platform 
  */
-contract PaceFacet is ChildMintableERC20 {
+contract CharacterFacet is ERC721A {
     using SafeMath for uint256;
 
     error Initialized();
 
-    /**
-     *  @dev Initialization function. This is used in place of a constructor for EIP-2535 contracts.
-     *  @notice Mints the total supply to PaceDisperser contract, where it handles dispersion logic.
-     *  Sets up ChildMintableERC20 - This is for integration with Polygon POS Bridge, allowing
-     *  transfer of tokens to Ethereum mainnet .
-     */
     function initialize() public onlyOwner {
         if (state.initialized) revert Initialized();
         state.initialized = true;
