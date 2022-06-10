@@ -12,7 +12,7 @@ import { IDiamondCut } from "./interfaces/IDiamondCut.sol";
 contract CharacterDiamond {
     CharacterStorage state;
 
-    constructor(address _contractOwner, address _diamondCutFacet, address _treasury, address _communityWallet, address _tokenDisperser) payable {        
+    constructor(address _contractOwner, address _diamondCutFacet) payable {        
         LibDiamond.setContractOwner(_contractOwner);
 
         // Add the diamondCut external function from the diamondCutFacet
