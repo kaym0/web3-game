@@ -74,8 +74,8 @@ contract Guild is ERC721, Ownable {
         if (character.owner != msg.sender) revert NotCharacterOwner();
         if (requiresInvite == true && invites[characterID] == false) revert NotInvited();
         if (hasLevelRequirement) {
-            try ICharacters(characters).getCharacter(characterID) returns (Character memory character) {
-                if (character.level < levelRequirement) revert LevelRequirementNotMet();
+            try ICharacters(characters).getCharacter(characterID) returns (Character memory char) {
+                if (char.level < levelRequirement) revert LevelRequirementNotMet();
             } catch {
                 revert();
             }

@@ -2,12 +2,18 @@
 pragma solidity 0.8.13;
 import { Equip } from "./IEquipment.sol";
 
+
 struct CharacterSeed {
     uint hp;
     uint str;
     uint def;
     uint agi;
     uint dex;
+}
+
+struct CharacterSkill {
+    uint256 level;
+    uint256 exp;
 }
 
 struct Character {
@@ -21,7 +27,10 @@ struct Character {
     uint32 def;
     uint32 dex;
     uint32 agi;
-    CharacterSeed seeds;
+    CharacterSkill mining;
+    CharacterSkill woodcutting;
+    CharacterSkill stonecutting;
+    CharacterSkill fishing;
 }
 
 interface ICharacters {

@@ -68,21 +68,12 @@ contract CharacterDiamond {
         /// ABDK vars.
         state.MIN_64x64 = -0x80000000000000000000000000000000;
         state.MAX_64x64 = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
-        /*
-        state.taxPercentage = 100;
-        state.taxCount = 3;
-        state.burnOnTransfer = true;
-        state.treasury = _treasury;
-        state.communityWallet = _communityWallet;
-        state.tokenDisperser = _tokenDisperser;
-        state.excludedFromTax[_treasury] = true;
-        state.excludedFromTax[_communityWallet] = true;
-        state.excludedFromTax[_tokenDisperser] = true;
-        state._name = "Pace";
-        state._symbol = "Pace";
-        state.DEPOSITOR_ROLE = keccak256("DEPOSITOR_ROLE");
-        state.DEFAULT_ADMIN_ROLE = 0x00;
-        */
+      
+
+        state.masterOperator = msg.sender;
+        state.operators[msg.sender] = true;
+
+        state.price = 0.0001 ether;
     }
     // Find facet for function that is called and execute the
     // function if a facet is found and return any value.

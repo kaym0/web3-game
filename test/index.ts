@@ -11,10 +11,10 @@ describe("Token", function () {
 
     before(async () => {
         const signers = await ethers.getSigners();
-        const Equipment = await ethers.getContractFactory("DreamEquipment");
+        const Equipment = await ethers.getContractFactory("Equipment");
         const Characters = await ethers.getContractFactory("Characters");
         const Market = await ethers.getContractFactory("Marketplace");
-        const Coin = await ethers.getContractFactory("Coin");
+        const Coin = await ethers.getContractFactory("Gems");
         const Area = await ethers.getContractFactory("Area");
 
         equipment = await Equipment.deploy();
@@ -45,7 +45,7 @@ describe("Token", function () {
     describe("mintCharacter", async () => {
         it("deploys", async () => {
             const random = ethers.utils.randomBytes(5);
-            await characters.mintCharacter({
+            await characters.mintCharacter("name", {
                 value: toWei("0.0001"),
             });
         });
@@ -132,43 +132,44 @@ describe("Token", function () {
         it("Enters area", async () => {
             await characters.setApprovalForAll(area.address, true);
 
+            const character = await characters.ownerOf("0");
             await area.enter("0");
 
             await advanceTimeAndBlock(86400, ethers);
-        })
-    })
+        });
+    });
 
     describe("Checks expRate", async () => {
         it("Checks rate of the rewards", async () => {
             const expRate = await area.getExpPerHour("0");
 
             console.log(expRate);
-        })
-    })
+        });
+    });
 
     describe("Checks successRate", async () => {
         it("Checks rate of the rewards", async () => {
             const successRate = await area.getSuccessRate("0");
 
             console.log(successRate);
-        })
-    })
+        });
+    });
 
     describe("Checks dropRate", async () => {
         it("Checks rate of the rewards", async () => {
             const expRate = await area.getDropRatePerHour("0");
 
             console.log(expRate);
-        })
-    })
+        });
+    });
 
     describe("TestAreaSuccess", async () => {
         it("Checks rate of the rewards", async () => {
             const expRate = await area.testAreaSuccess("0");
 
             console.log(expRate);
-        })
-    })
+        });
+    });
 
     async function createTestEquipment(equipment: any, amount: number) {
         const equipmentNames = [
@@ -203,8 +204,6 @@ describe("Token", function () {
             await createTestEquipment(equipment, newIteration);
         }
     }
-
-
 });
 
 /**

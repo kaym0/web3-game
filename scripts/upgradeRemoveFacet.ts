@@ -4,7 +4,7 @@ import "@nomiclabs/hardhat-ethers";
 import { getSelectors, FacetCutAction } from "./libraries/diamond.js";
 import { any } from "hardhat/internal/core/params/argumentTypes";
 
-const FacetNames = ["CharacterFacet"];
+const FacetNames = ["DiamondLoupeFacet"];
 const FacetAddresses = ["0xc8024fb9A97553A39Cf6302507221C22f95ac94B"];
 async function deploy() {
     const diamond = await getContractInstance(
@@ -19,7 +19,7 @@ async function deploy() {
 
         for (const FacetName of FacetNames) {
             const Facet = await ethers.getContractFactory(FacetName);
-            const facet = Facet.attach("0xc8024fb9A97553A39Cf6302507221C22f95ac94B");
+            const facet = Facet.attach("0x70B5840b21D1ca8C998b3Ad6D5e5D8C7933C86Bf");
             cut.push({
                 facetAddress: ethers.constants.AddressZero,
                 action: FacetCutAction.Remove,

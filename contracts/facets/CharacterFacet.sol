@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
-import { CharacterStorage } from "../libraries/CharacterStorage.sol";
+pragma solidity ^0.8.10;
+import { ERC721AQueryable } from "./Character/token/ERC721/extensions/ERC721AQueryable.sol";
 import { LibDiamond } from "../libraries/LibDiamond.sol";
-import { LibAppStorage } from "../libraries/LibAppStorage.sol";
-import { ERC721A } from "./token/ERC721/ERC721A.sol";
-import { ERC721AQueryable } from "./token/ERC721/extensions/ERC721AQueryable.sol";
-import { Character, CharacterSeed, ICharacters } from "../interfaces/ICharacters.sol";
+import { Character, CharacterSkill, CharacterSeed, ICharacters } from "../interfaces/ICharacters.sol";
 import "../interfaces/IEquipment.sol";
 import "../utils/RandomUtil.sol";
 
@@ -32,7 +29,7 @@ contract CharacterFacet is ERC721AQueryable {
 
 
     function initialize(address _equipment) public onlyOwner {
-          if (state.initialized) revert Initialized();
+        if (state.initialized) revert Initialized();
         state.initialized = true;
         state.equipment = IEquipment(_equipment);
     }
@@ -106,6 +103,24 @@ contract CharacterFacet is ERC721AQueryable {
         }
     }
 
+    function gainTradeExperience(uint256 characterId, uint256 skillId, uint256 amount) public onlyOwner {
+        Character storage character = state.characters[characterId];
+
+        if (skillId == 0) {
+            character.mining.exp = character.mining.exp + amount;
+        } else if (skillId == 1) {
+            character.fishing.exp = character.mining.exp + amount;
+        } else if (skillId == 2) {
+            character.woodcutting.exp = character.mining.exp + amount;
+        } else if (skillId == 3) {
+            character.stonecutting.exp = character.mining.exp + amount;
+        }
+    }
+
+    function _gainSkillLevel() internal {
+
+    }
+
     /**
      * 
      *  @dev Calculates the amount of experience required to get to the next level from a given level.
@@ -131,12 +146,14 @@ contract CharacterFacet is ERC721AQueryable {
     function _gainLevel(Character storage character) private {
         character.exp = character.exp - toNextLevel(character.level);
 
+        CharacterSeed memory seed = state.seeds[character.id];
+
         character.level = character.level + 1;
-        character.hp = (character.level**3) / (character.level * 3) + 10 + (uint32(character.seeds.hp) * character.level / 255);
-        character.str = (character.level**3) / (character.level * 15) + 2 + (uint32(character.seeds.str) * character.level /  255);
-        character.dex = (character.level**3) / (character.level * 15) + 2 + (uint32(character.seeds.dex) * character.level /  255);
-        character.agi = (character.level**3) / (character.level * 15) + 2 + (uint32(character.seeds.agi) * character.level /  255);
-        character.def = (character.level**3) / (character.level * 15) + 2 + (uint32(character.seeds.def) * character.level /  255);
+        character.hp = (character.level**3) / (character.level * 3) + 10 + (uint32(seed.hp) * character.level / 255);
+        character.str = (character.level**3) / (character.level * 15) + 2 + (uint32(seed.str) * character.level /  255);
+        character.dex = (character.level**3) / (character.level * 15) + 2 + (uint32(seed.dex) * character.level /  255);
+        character.agi = (character.level**3) / (character.level * 15) + 2 + (uint32(seed.agi) * character.level /  255);
+        character.def = (character.level**3) / (character.level * 15) + 2 + (uint32(seed.def) * character.level /  255);
     }
 
     /**
@@ -237,18 +254,23 @@ contract CharacterFacet is ERC721AQueryable {
             def,
             dex,
             agi,
-            CharacterSeed(
+            CharacterSkill(1,0),
+            CharacterSkill(1,0),
+            CharacterSkill(1,0),
+            CharacterSkill(1,0) 
+        );
+        
+        state.seeds[state.index] = CharacterSeed(
                 uint8(seed[seed.length-1]), 
                 uint8(seed[seed.length-2]), 
                 uint8(seed[seed.length-3]), 
                 uint8(seed[seed.length-4]), 
                 uint8(seed[seed.length-5])
-            )
-        );
+            );
 
         emit CharacterCreated(msg.sender, state.index);
         
-       state. index = state.index + 1;
+        state.index = state.index + 1;
     }
 
     /**

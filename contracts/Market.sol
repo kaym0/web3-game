@@ -15,7 +15,7 @@ import "./access/Operator.sol";
  *
  *  @custom:experimental
  *
- *  @version 0.0.1
+ *  @version 0.0.2
  *
  *  A marketplace where players can buy and sell their equipment and items for currency. 
  *

@@ -2,7 +2,7 @@
 pragma solidity 0.8.13;
 
 import { IEquipment, Equip } from "../interfaces/IEquipment.sol";
-import { Character } from "../interfaces/ICharacters.sol";
+import { Character, CharacterSeed } from "../interfaces/ICharacters.sol";
 
 struct CharacterStorage {
 
@@ -97,6 +97,8 @@ struct CharacterStorage {
     
     mapping (uint256 => Character) characters;
     mapping (uint256 => mapping(uint256 => Equip)) characterEquipment;
+    mapping (uint256 => CharacterSeed) seeds;
+
 
 /*
     /// Core ERC20 variables

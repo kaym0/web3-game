@@ -5,6 +5,7 @@ import { getSelectors, FacetCutAction } from "./libraries/diamond.js";
 import { any } from "hardhat/internal/core/params/argumentTypes";
 
 const FacetNames = ["CharacterFacet"];
+//const FacetNames = ["CharacterFacet"];
 const FacetAddresses = ["0xc8024fb9A97553A39Cf6302507221C22f95ac94B"];
 async function deploy() {
     const diamond = await getContractInstance(
@@ -17,8 +18,9 @@ async function deploy() {
         "0x5bD5D7a6A6db85696027622e4126808809Bf7228"
     );
 
-    await removeFacets(FacetNames);
-    async function removeFacets(FacetNames: string[]) {
+    await addFacets(FacetNames);
+
+    async function addFacets(FacetNames: string[]) {
         console.log("Deploying facets");
         const cut = [];
 
@@ -36,6 +38,7 @@ async function deploy() {
             });
         }
 
+        console.log(getSelectors(facet))
         const diamondCut = await ethers.getContractAt("IDiamondCut", diamond.address);
         const tx = await diamondCut.diamondCut(cut, ethers.constants.AddressZero, "0x");
         console.log("Diamond cut tx:             ", tx.hash);
