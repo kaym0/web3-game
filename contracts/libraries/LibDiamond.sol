@@ -4,6 +4,9 @@ pragma solidity ^0.8.0;
 import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
 
 library LibDiamond {
+
+    error NotOperator();
+    
     bytes32 constant DIAMOND_STORAGE_POSITION = keccak256("diamond.standard.diamond.storage");
 
     struct FacetAddressAndSelectorPosition {
@@ -18,6 +21,9 @@ library LibDiamond {
         mapping(bytes4 => bool) supportedInterfaces;
         // owner of the contract
         address contractOwner;
+        address masterOperator;
+        bool operatorsCanWrite;
+        mapping (address => bool) operators;
     }
 
     function diamondStorage() internal pure returns (DiamondStorage storage ds) {
@@ -29,11 +35,32 @@ library LibDiamond {
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
+
+    modifier onlyOperator {
+        if (LibDiamond.diamondStorage().operators[msg.sender] == false) revert NotOperator();
+        _;
+    }
+
+    function setContractOperator(address _operator) internal {
+        DiamondStorage storage ds = diamondStorage();
+        ds.operators[_operator] = true;
+    }
+
+    function setMasterOperator(address _operator) internal {
+        DiamondStorage storage ds = diamondStorage();
+        ds.masterOperator = _operator;
+    }
+
     function setContractOwner(address _newOwner) internal {
         DiamondStorage storage ds = diamondStorage();
         address previousOwner = ds.contractOwner;
         ds.contractOwner = _newOwner;
         emit OwnershipTransferred(previousOwner, _newOwner);
+    }
+
+    function removeOperator(address _operator) internal {
+        DiamondStorage storage ds = diamondStorage();
+        ds.operators[_operator] = false;
     }
 
     function contractOwner() internal view returns (address contractOwner_) {

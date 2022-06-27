@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity ^0.8.10;
 
 import { IEquipment, Equip } from "../interfaces/IEquipment.sol";
 import { Character, CharacterSeed } from "../interfaces/ICharacters.sol";
@@ -88,6 +88,7 @@ struct CharacterStorage {
     bool initialized;
     uint256 price;
     uint256 index;
+    uint256 accountLimit;
 
     IEquipment equipment;
 
@@ -98,25 +99,5 @@ struct CharacterStorage {
     mapping (uint256 => Character) characters;
     mapping (uint256 => mapping(uint256 => Equip)) characterEquipment;
     mapping (uint256 => CharacterSeed) seeds;
-
-
-/*
-    /// Core ERC20 variables
-    mapping(address => mapping(address => uint256)) allowances;
-    mapping(address => uint256) balances;
-    mapping(address => uint256) approvedContractIndexes;
-    address[] approvedContracts;
-    bytes32[1000] emptyMapSlots;
-    address contractOwner;
-    uint256 totalSupply;
-
-    /// $pace token variables
-    mapping (address => bool) excludedFromTax;
-    address treasury;
-    address communityWallet;
-    address tokenDisperser;
-    uint256 taxPercentage;
-    uint256 taxCount;
-    bool burnOnTransfer;
-*/
+    mapping (uint256 => uint256) lastStaminaRefresh;
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity ^0.8.10;
 
 import { IEquipment, Equip } from "../interfaces/IEquipment.sol";
 import { Character } from "../interfaces/ICharacters.sol";

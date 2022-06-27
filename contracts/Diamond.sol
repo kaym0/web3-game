@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity ^0.8.10;
 import { LibDiamond } from "./libraries/LibDiamond.sol";
 import { CharacterStorage } from "./libraries/CharacterStorage.sol";
 import { IDiamondCut } from "./interfaces/IDiamondCut.sol";
@@ -30,6 +30,8 @@ contract CharacterDiamond {
 
         LibDiamond.diamondCut(cut, address(0), "");
         LibDiamond.setContractOwner(_contractOwner);
+        LibDiamond.setContractOperator(_contractOwner);
+        LibDiamond.setMasterOperator(_contractOwner);
 
 
 
@@ -74,6 +76,7 @@ contract CharacterDiamond {
         state.operators[msg.sender] = true;
 
         state.price = 0.0001 ether;
+        state.accountLimit = 4;
     }
     // Find facet for function that is called and execute the
     // function if a facet is found and return any value.

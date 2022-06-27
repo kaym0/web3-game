@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.13;
+pragma solidity ^0.8.10;
 
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -17,8 +17,11 @@ contract AreaFactory is ERC721Enumerable, Operator, IArea {
     address public gems;
 
     uint256 public index;
+    uint256 public baseSpeed = 10e18;
+
     mapping (uint256 => Area) areas;
     mapping (uint256 => uint256) characterLocation;
+    mapping(uint256 => uint256) lastTimeUpdated;
 
     struct Area { 
         uint256 difficulty;
@@ -26,7 +29,6 @@ contract AreaFactory is ERC721Enumerable, Operator, IArea {
         uint256 expRate;
         uint256 dropRate;
         uint256 gemRate;
-        mapping(uint256 => uint256) lastTimeUpdated;
         mapping(uint256 => uint256) successRate;
     }
 
@@ -40,8 +42,7 @@ contract AreaFactory is ERC721Enumerable, Operator, IArea {
      *  This is expected to be incredibly heavy on gas and this will be removed for alternative
      *  methods in the future.
      */
-    function getOwnedCharactersInAreas(address owner) 
-    external view returns (Character[] memory, uint256[] memory) {
+    function getOwnedCharactersInAreas(address owner) external view returns (Character[] memory, uint256[] memory) {
         uint256 tokensOwned = balanceOf(owner);
 
         Character[] memory owned = new Character[](tokensOwned);
@@ -60,30 +61,36 @@ contract AreaFactory is ERC721Enumerable, Operator, IArea {
      *
      *  @dev Creates a new area, where characters can go to battle and win rewards.
      *
+     *   Rates are calculted using the base amount of actions completed a day. This is calculated based on the base number of actions per day. 
+     *
      *  @param _difficulty - The difficult of the area.
      *
      *  Areas MUST be created in sequential order starting at 1.
      *
      */
     function createArea(
-        uint256 areaID, 
+        uint256 areaId, 
         uint256 _difficulty, 
         uint256 dailyExp, 
-        uint256 dailyDrops, 
-        uint256 dailyGems
+        uint256 dailyGems,
+        uint256 dailyDrops 
     ) external onlyOperator {
-        if (index < areaID) index = areaID;
-
-        Area storage area = areas[areaID];
+        Area storage area = areas[areaId];
 
         area.difficulty = _difficulty;
-        area.expRate = dailyExp / 86400;
-        area.dropRate = dailyDrops / 86400;
-        area.gemRate = dailyGems / 86400;
 
-        if (index < areaID) index = areaID;
+        /// Experience per battle.
+        area.expRate = (dailyExp * 1e18) / (86400 / (baseSpeed / 1e18));
 
-        emit AreaCreated(areaID);
+        /// Gems per battle
+        area.gemRate = (dailyGems * 1e18) / (86400 / (baseSpeed / 1e18));
+
+        /// Droprate per battle
+        area.dropRate = (dailyDrops * 1e18) / (86400 / (baseSpeed / 1e18));
+
+        if (index < areaId) index = areaId;
+
+        emit AreaCreated(areaId);
     }
 
     function sqrt(uint x) internal pure returns (uint y) {
@@ -99,65 +106,187 @@ contract AreaFactory is ERC721Enumerable, Operator, IArea {
         return IERC721(characters).balanceOf(address(this));
     }
 
-    function difficulty(uint256 areaID) external view returns (uint256) {
-        return areas[areaID].difficulty;
+    function difficulty(uint256 areaId) external view returns (uint256) {
+        return areas[areaId].difficulty;
     }
     
-    function expRate(uint256 areaID) external view returns (uint256) {
-        return areas[areaID].expRate;
+    function expRate(uint256 areaId) external view returns (uint256) {
+        return areas[areaId].expRate;
     }
 
-    function dropRate(uint256 areaID) external view returns (uint256) {
-        return areas[areaID].dropRate;
+    function dropRate(uint256 areaId) external view returns (uint256) {
+        return areas[areaId].dropRate;
     }
 
-    function gemRate(uint256 areaID) external view returns (uint256) {
-        return areas[areaID].gemRate;
+    /**
+     *
+     *  @dev Fetches the standard gem rate for the area. This is the base rate and is not influenced by character buffs or success rate.
+     * 
+     */
+    function gemRate(uint256 areaId) external view returns (uint256) {
+        return areas[areaId].gemRate;
     }
 
-    function getSuccessRate(uint256 areaID, uint256 characterID) external view returns (uint256) {
-        return areas[areaID].successRate[characterID];
+    function getSuccessRate(uint256 areaId, uint256 cid) external view returns (uint256) {
+        return areas[areaId].successRate[cid];
     }
 
-    function getExpPerHour(uint256 areaID, uint256 characterID) external view returns (uint256) {
-        Area storage area = areas[areaID];
+    /**
+     *
+     *  @dev Fetches the amount of experiecne a character will receive in an area after spending one hour.
+     *  Since this is character dependant, it may vary between characters.
+     *
+     *  @param areaId - Area ID
+     *
+     *  @param cid - Character ID
+     *
+     *  @return gemsPerHour - Amount of experience a character should receive for one hour spent within the area.
+     *
+     */
+    function getExpPerHour(uint256 areaId, uint256 cid) external view returns (uint256) {
+        Area storage area = areas[areaId];
+        Character memory character = ICharacters(characters).getCharacter(cid);
 
-        return ((area.expRate * area.successRate[characterID]) / 1e18) * 3600;
+        uint256 characterSpeed = baseSpeed - (baseSpeed * (character.multipliers.speed - 1e18) / 1e18);
+
+        uint256 actionsPerHour = 3600e18 / characterSpeed;
+
+        return area.expRate * area.successRate[cid] * actionsPerHour / 1e18;
     }
 
-    function getGoldPerHour(uint256 areaID, uint256 characterID) external view returns (uint256) {
-        Area storage area = areas[areaID];
-        return (area.gemRate * area.successRate[characterID]) * 3600;
+    /**
+     *
+     *  @dev Fetches the amount of gems a character will receive in an area after spending one hour.
+     *  Since this is character dependant, it may vary between characters.
+     *
+     *  @param areaId - Area ID
+     *
+     *  @param cid - Character ID
+     *
+     *  @return gemsPerHour - Amount of gems a character should receive for one hour spent within the area.
+     *
+     */
+    function getGemsPerHour(uint256 areaId, uint256 cid) external view returns (uint256) {
+        Area storage area = areas[areaId];
+
+        Character memory character = ICharacters(characters).getCharacter(cid);
+
+        uint256 characterSpeed = baseSpeed - (baseSpeed * (character.multipliers.speed - 1e18) / 1e18);
+
+        uint256 actionsPerHour = 3600e18 / characterSpeed;
+
+        return (area.gemRate * area.successRate[cid]) * actionsPerHour / 1e18;
     }
 
-    function getAvailableExp(uint256 areaID, uint256 characterID) external view returns (uint256) {
-        Area storage area = areas[areaID];
-        uint256 lastUpdated = area.lastTimeUpdated[characterID];
-        uint256 timeBattling = block.timestamp - lastUpdated;
-        return (timeBattling * area.expRate * area.successRate[characterID]) / 1e18;
+    /**
+     *
+     *  @dev See getAvailableGemsAndExp(). 
+     *  Fetches the total experience available for a given character. 
+     *
+     *  @param areaId - Area ID
+     *
+     *  @param cid - Character ID
+     *
+     *  @return expGained - Experience available for character at cid.
+     *
+     */
+    function getAvailableExp(uint256 areaId, uint256 cid) external view returns (uint256 expGained) {
+        (expGained,) = getAvailableExpAndGems(areaId, cid);
     }
 
-    function getAvailableGold(uint256 areaID, uint256 characterID) external view returns (uint256) {
-        Area storage area = areas[areaID];
-
-        uint256 lastUpdated = area.lastTimeUpdated[characterID];
-        uint256 timeBattling = block.timestamp - lastUpdated;
-        return timeBattling * area.gemRate * area.successRate[characterID];
+    /**
+     *
+     *  @dev See getAvailableGemsAndExp(). 
+     *  Fetches the total gems available for a given character. 
+     *
+     *  @param areaId - Area ID
+     *
+     *  @param cid - Character ID
+     *
+     *  @return gemsGained - Gems available for character at cid.
+     *
+     */
+    function getAvailableGems(uint256 areaId, uint256 cid) external view returns (uint256 gemsGained) {
+        (,gemsGained) = getAvailableExpAndGems(areaId, cid);
     }
 
-    function enter(uint256 areaID, uint256 characterID) public {
-        Area storage area = areas[areaID];
-        IERC721(characters).transferFrom(msg.sender, address(this), characterID);
+    /**
+     *
+     *  @dev Fetches the currently available experience and gems that a character has earned while in the area. This accounts
+     *  for stamina, and will cease to increase after the characters stamina reaches zero.
+     *
+     *  @param areaId - The area ID
+     *
+     *  @param cid - The character ID
+     *
+     *  @return expGained - Experience gained
+     *
+     *  @return gemsGained - Gems gained.
+     *
+     */
+    function getAvailableExpAndGems(uint256 areaId, uint256 cid) public view returns (uint256 expGained, uint256 gemsGained) {
+        Area storage area = areas[areaId];
+        Character memory character = ICharacters(characters).getCharacter(cid);
 
-        // Assigns the characterID to the newly minted token.
+        uint lastUpdate = lastTimeUpdated[cid];
+
+        uint256 characterSpeed = baseSpeed - (baseSpeed * (character.multipliers.speed - 1e18) / 1e18);
+
+        uint256 timeSinceLast = character.stamina * 10  > block.timestamp - lastUpdate ? block.timestamp - lastUpdate : character.stamina * 10;
+
+        uint256 actionsSinceLast = timeSinceLast * 1e18 / characterSpeed;
+
+        expGained  = actionsSinceLast * area.expRate * area.successRate[cid] / 1e18;
+        gemsGained = actionsSinceLast * area.gemRate * area.successRate[cid] / 1e18;  
+    }
+
+    /**
+     *
+     *  @dev Fetches values that are associated with the characters stamina; This is designed to simplify the front-end logic when determining
+     *  how much time a character has been battling.
+     *
+     *  @param cid - The character ID to query.
+     *
+     *  @return lastTimeUpdated - The last block where the character restored their stamina.
+     *
+     *  @return currentBlock - The current block number.
+     *
+     */
+    function characterBlockInfo(uint256 cid) external view returns (uint256, uint256) {
+        return (
+            lastTimeUpdated[cid],
+            block.timestamp
+        );
+    }
+
+    /**
+     *
+     *  @dev Moves a character into an area. This begins battling and rewards are earned from this point forward. Characters will run out of
+     *  stamina and cease to get rewards beyond a certain point, at this point, the refresh() function can be called to fully restore stamina.
+     *
+     *  An NFT is minted to the owner and is used as a receipt when leaving the area. Only the owner of the receipt area NFT will be capable of
+     *  claiming a character back from an area. It is highly recommended not to trade or transfer area NFTs and to instead withdraw characters
+     *  from an area before executing any sort of trade or transfer involving the character.
+     *
+     *  @param areaId - The area id
+     *
+     *  @param cid - The character id
+     *
+     */
+    function enter(uint256 areaId, uint256 cid) public {
+        IERC721(characters).transferFrom(msg.sender, address(this), cid);
+
+        // Assigns the cid to the newly minted token.
         // This saves gas setting IDs while also making it a lot easier to understand which token it represents.
-        _mint(msg.sender, characterID);
+        _mint(msg.sender, cid);
 
-        _setAreaSuccessRate(areaID, characterID);
+        _setAreaSuccessRate(areaId, cid);
 
-        area.lastTimeUpdated[characterID] = block.timestamp;
+        lastTimeUpdated[cid] = block.timestamp;
 
-        emit AreaEntered(msg.sender, characterID);
+        characterLocation[cid] = areaId;
+
+        emit AreaEntered(msg.sender, cid);
     }
 
     /**
@@ -166,20 +295,19 @@ contract AreaFactory is ERC721Enumerable, Operator, IArea {
      *  
      *  @notice A receipt token is required to withdraw a character from this contract.
      *
-     *  @param characterID - The ID of the token to withdraw. This is the same tokenID as the token which is used to claim it.
+     *  @param cid - The ID of the token to withdraw. This is the same tokenID as the token which is used to claim it.
      *
      */
-    function exit(uint256 areaID, uint256 characterID) public {
-        Area storage area = areas[areaID];
-
+    function exit(uint256 cid) public {
         // This is sufficient for determining if the character is in the area or not.
-        if (area.lastTimeUpdated[characterID] == 0) return;
+        if (lastTimeUpdated[cid] == 0) return;
 
-        _burn(characterID);
+        _burn(cid);
 
-        IERC721(characters).transferFrom(address(this), msg.sender, characterID);
+        IERC721(characters).transferFrom(address(this), msg.sender, cid);
 
-        area.lastTimeUpdated[characterID] = 0;
+        delete lastTimeUpdated[cid];
+        delete characterLocation[cid];
     }
 
     /**
@@ -187,85 +315,124 @@ contract AreaFactory is ERC721Enumerable, Operator, IArea {
      *  @dev Calculates the success rate that a character will have for each battle they engage in while in this area.
      *  This is used to calculate the reward rate for a character.
      *
-     *  @param characterID - CharacterID
+     *  @param cid - CharacterID
      *
      */
-    function _setAreaSuccessRate(uint256 areaID, uint256 characterID) public {
-        Area storage area = areas[areaID];
-        Character memory character = ICharacters(characters).getCharacter(characterID);
+    function _setAreaSuccessRate(uint256 areaId, uint256 cid) public {
+        Area storage area = areas[areaId];
+        Character memory character = ICharacters(characters).getCharacter(cid);
 
         uint256 power = sqrt(character.hp * character.str * character.dex * character.agi * character.def);
 
         uint256 successPercentile = power * 1e18 / area.difficulty;
         
         if (successPercentile < 750_000_000_000_000_000) {
-            area.successRate[characterID] = 0;
+            area.successRate[cid] = 0;
         } else if (successPercentile > 1e18) {
-            area.successRate[characterID] = 1e18;
+            area.successRate[cid] = 1e18;
+        } else {
+            area.successRate[cid] = successPercentile;
         }
-    }
-
-    /**
-     */
-    function refresh(uint256 id) public {
-
     }
 
     /**
      *  Gets the currently set variables for a character based on their success rate in an area.
      */
-    function testRates(uint256 areaID, uint256 characterID) public view returns (uint256, uint256) {
-        Area storage area = areas[areaID];
+    function testRates(uint256 areaId, uint256 cid) public view returns (uint256, uint256) {
+        Area storage area = areas[areaId];
 
-        uint256 lastUpdated = area.lastTimeUpdated[characterID];
+        uint256 lastUpdated = lastTimeUpdated[cid];
 
         uint256 timeBattling = block.timestamp - lastUpdated;
 
-        uint32 experience = uint32((timeBattling * area.expRate * area.successRate[characterID]) / 1e18);
+        uint32 _expRate = uint32((timeBattling * area.expRate * area.successRate[cid]) / 1e18);
 
-        uint256 drop = timeBattling * area.dropRate * area.successRate[characterID];
+        uint256 _gemRate = timeBattling * area.dropRate * area.successRate[cid] / 1e18;
 
-        return (experience, drop);
+        return (_expRate, _gemRate);
     }
 
     /**
      *
-     *  @dev Handles distribution of experience and loot to character.
+     *  @dev Handles distribution of experience and loot to character for battling within the area. Characters are 
+     *  limited by their stamina pool and only receive rewards for the period for which they have enoughs stamina to
+     *  sustain battle. Stamina is recovered by collecting experience within the area a character is battling.
      *
-     *  @param characterID - The characterID to give loot and experience to.
+     *  @param areaId - ID of the area being collected for.
      *
+     *  @param cid - The cid to give loot and experience to.
      *
      */
-    function _getExperienceAndGems(uint256 areaID, uint256 characterID) internal {
-        Area storage area = areas[areaID];
-        uint256 lastUpdated = area.lastTimeUpdated[characterID];
-        uint256 timeBattling = block.timestamp - lastUpdated;
-        uint32 experienceGained = uint32((timeBattling * area.expRate * area.successRate[characterID]) / 1e18);
-        uint256 goldGained = timeBattling * area.dropRate * area.successRate[characterID];
+    function _getExperienceAndGems(uint256 areaId, uint256 cid) internal {
+        /// Calculate experience and gem values
+        (uint256 expGained, uint256 gemsGained) = getAvailableExpAndGems(areaId, cid);
 
         /// Assign exp to character
-        ICharacters(characters).gainExperience(characterID, experienceGained);
+        ICharacters(characters).gainExperience(cid, expGained);
 
-        /// Mint gold to character owner.
-        IGems(gems).mintTo(msg.sender, goldGained);
+        /// Mint gems to character owner.
+        IGems(gems).mintTo(msg.sender, gemsGained);
 
         /// Update characters last update time. This ensures they don't claim additional rewards.
-        area.lastTimeUpdated[characterID] = block.timestamp;
+        lastTimeUpdated[cid] = block.timestamp;
 
         /// Resets their success rate incase they have leveled up.
-        _setAreaSuccessRate(areaID, characterID);
+        _setAreaSuccessRate(areaId, cid);
 
-        emit ExperienceAndGoldGained(characterID, experienceGained, goldGained);
+        emit ExperienceAndGemsGained(cid, expGained, gemsGained);
+    }
+
+
+    /**
+     *
+     *
+     *  Temporary function which will be removed.
+     *
+     *
+     */
+    function __getExperienceAndGems(uint256 areaId, uint256 cid) internal {
+        Area storage area = areas[areaId];
+        Character memory character = ICharacters(characters).getCharacter(cid);
+
+        uint lastUpdate = lastTimeUpdated[cid];
+
+        /// Calculation is used several times in this tx, so this saves gas.
+        uint256 characterSpeed = (baseSpeed - ((baseSpeed * character.multipliers.speed) / 1e18) / 2);
+
+        uint256 timeSinceLast = character.stamina * 10  > block.timestamp - lastUpdate ? block.timestamp - lastUpdate : character.stamina * 10;
+
+        uint256 actionsSinceLast = timeSinceLast * 1e18 / characterSpeed;
+
+        uint experienceGained = actionsSinceLast * area.expRate * area.successRate[cid] / 1e18;
+
+        uint gemsGained = actionsSinceLast * area.gemRate * area.successRate[cid] / 1e18;
+
+        /// Assign exp to character
+        ICharacters(characters).gainExperience(cid, uint32(experienceGained));
+
+        /// Mint gems to character owner.
+        IGems(gems).mintTo(msg.sender, gemsGained);
+
+        /// Update characters last update time. This ensures they don't claim additional rewards.
+        lastTimeUpdated[cid] = block.timestamp;
+
+        /// Resets their success rate incase they have leveled up.
+        _setAreaSuccessRate(areaId, cid);
+
+        emit ExperienceAndGemsGained(cid, experienceGained, gemsGained);
     }
 
     /**
      *
-     *  @dev Collects rewards based on time spent in the area.
+     *  @dev Collects rewards based on time spent in the area. This executes a series of complex calculations and should only be executed when stamina is low.
+     *  This will help reduce network load and reduce upfront costs for leveling your character and earning gems.
      *
      */
-    function collect(uint256 areaID, uint256 characterID) public {
-        if (ownerOf(characterID) != msg.sender) revert NotOwner();
-        _getExperienceAndGems(areaID, characterID);
+    function collect(uint256 areaId, uint256 cid) public {
+        if (ownerOf(cid) != msg.sender) revert NotOwner();
+
+        _getExperienceAndGems(areaId, cid);
+        ICharacters(characters).refreshStamina(cid);
     }
 
     /**
@@ -273,21 +440,21 @@ contract AreaFactory is ERC721Enumerable, Operator, IArea {
      *  @dev Characters who are in this area generate experience automatically over time. Experience can be claimed here, or automatically upon exiting the area.
      *  If you are in this area for an extended period of time, it can be useful to claim experience before you leave, so that you are able to level up.
      *  
-     *  @param characterID - The characterID which is claiming this experience.
+     *  @param cid - The cid which is claiming this experience.
      *
      */
-    function collectExperience(uint256 areaID, uint256 characterID) public {
-        if (ownerOf(characterID) != msg.sender) revert NotOwner();
+    function collectExperience(uint256 areaId, uint256 cid) public {
+        if (ownerOf(cid) != msg.sender) revert NotOwner();
 
-        Area storage area = areas[areaID];
-        uint256 lastUpdated = area.lastTimeUpdated[characterID];
+        Area storage area = areas[areaId];
+        uint256 lastUpdated = lastTimeUpdated[cid];
 
         uint256 timeBattling = block.timestamp - lastUpdated;
 
-        uint32 experience = uint32((timeBattling * area.expRate * area.successRate[characterID]) / 1e18);
+        uint32 experience = uint32((timeBattling * area.expRate * area.successRate[cid]) / 1e18);
 
-        ICharacters(characters).gainExperience(characterID, experience);
+        ICharacters(characters).gainExperience(cid, experience);
 
-        area.lastTimeUpdated[characterID] = block.timestamp;
+        lastTimeUpdated[cid] = block.timestamp;
     }
 }

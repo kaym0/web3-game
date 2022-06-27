@@ -4,12 +4,12 @@ import "@nomiclabs/hardhat-ethers";
 import { getSelectors, FacetCutAction } from "./libraries/diamond.js";
 import { any } from "hardhat/internal/core/params/argumentTypes";
 
-const FacetNames = ["DiamondLoupeFacet"];
-const FacetAddresses = ["0xc8024fb9A97553A39Cf6302507221C22f95ac94B"];
+const FacetNames = ["CharacterFacet"];
+const FacetAddresses = ["0x9f9D6Fdfb1Da8ABD6F363Aa1fED939944Bd71F5c"];
 async function deploy() {
     const diamond = await getContractInstance(
         "CharacterDiamond",
-        "0x5bD5D7a6A6db85696027622e4126808809Bf7228"
+        "0x9f9D6Fdfb1Da8ABD6F363Aa1fED939944Bd71F5c"
     );
 
     await removeFacets(FacetNames);

@@ -4,7 +4,7 @@ import "@nomiclabs/hardhat-ethers";
 import { getSelectors, FacetCutAction } from "./libraries/diamond.js";
 import { any } from "hardhat/internal/core/params/argumentTypes";
 
-const FacetNames = ["DiamondLoupeFacet", "CharacterFacet"];
+const FacetNames = ["DiamondLoupeFacet", "CharacterFacet", "OperatorFacet", "CharacterUpdateFacet"];
 
 async function deploy() {
     await run("compile");
@@ -48,8 +48,6 @@ async function deploy() {
 
     const gems = await deployContract("Gems");
 
-    const area = await deployContract("Area", [characters.address, gems.address, "500"]);
-
     const market = await deployContract("Marketplace", [equipment.address, gems.address]);
 
     console.log("Completed diamond cut");
@@ -63,7 +61,18 @@ async function deploy() {
     console.log(`export const characterContract = "${characters.address}"`);
     console.log(`export const gemsContract = "${gems.address}"`);
     console.log(`export const marketContract = "${market.address}"`);
-    console.log(`address: "${area.address}"`)
+
+
+    //await addOperator(equipment, characters.address);
+    //await addOperator(characters, equipment.address);
+    //await addOperator(gems, area.address);
+    //await addOperator(characters, area.address);
+
+
+    async function addOperator(contract: any, operator: any) {
+        const tx = await contract.addOperator(operator);
+        await tx.wait();
+    }
 
 
     async function initializeCharacterContract(contract: any, args: string[]) {

@@ -6,12 +6,12 @@ import { any } from "hardhat/internal/core/params/argumentTypes";
 
 const FacetNames = ["CharacterFacet"];
 const FacetAddresses = ["0xc8024fb9A97553A39Cf6302507221C22f95ac94B"];
-const diamondAddress = "0x5bD5D7a6A6db85696027622e4126808809Bf7228";
+const diamondAddress = "0x9f9D6Fdfb1Da8ABD6F363Aa1fED939944Bd71F5c";
 
 async function deploy() {
     const diamond = await getContractInstance(
         "CharacterDiamond",
-        "0xc8024fb9A97553A39Cf6302507221C22f95ac94B"
+        "0x06223aEA47F97694Fda88D9FDB98646943ba70C2"
     );
 
     const diamondCutFacet = await ethers.getContractAt("DiamondCutFacet", diamondAddress);
@@ -30,6 +30,8 @@ async function deploy() {
         for (let i = 0; i < facets.length; i++) {
             selectors.push(...facets[i].functionSelectors);
         }
+
+        console.log("selectorsA", selectors)
         selectors = removeSelectors(selectors, [
             "facets()",
             "diamondCut(tuple(address,uint8,bytes4[])[],address,bytes)",
@@ -38,6 +40,7 @@ async function deploy() {
             "facetAddresses()",
             "supportsInterface(bytes4 _interfaceId)"
         ]);
+        console.log("selectorsB", selectors)
         let tx = await diamondCutFacet.diamondCut(
             [
                 {

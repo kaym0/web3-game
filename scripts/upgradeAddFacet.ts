@@ -6,11 +6,11 @@ import { any } from "hardhat/internal/core/params/argumentTypes";
 
 const FacetNames = ["CharacterFacet"];
 //const FacetNames = ["CharacterFacet"];
-const FacetAddresses = ["0xc8024fb9A97553A39Cf6302507221C22f95ac94B"];
+const FacetAddresses = ["0x9f9D6Fdfb1Da8ABD6F363Aa1fED939944Bd71F5c"];
 async function deploy() {
     const diamond = await getContractInstance(
         "CharacterDiamond",
-        "0x5bD5D7a6A6db85696027622e4126808809Bf7228"
+        "0x9f9D6Fdfb1Da8ABD6F363Aa1fED939944Bd71F5c"
     );
 
     const diamondLoupeFacet = await getContractInstance(
@@ -36,15 +36,15 @@ async function deploy() {
                 action: FacetCutAction.Add,
                 functionSelectors: getSelectors(facet),
             });
+            console.log(getSelectors(facet))
         }
 
-        console.log(getSelectors(facet))
         const diamondCut = await ethers.getContractAt("IDiamondCut", diamond.address);
         const tx = await diamondCut.diamondCut(cut, ethers.constants.AddressZero, "0x");
         console.log("Diamond cut tx:             ", tx.hash);
         const receipt = await tx.wait();
 
-        const newSelectors = await diamondLoupeFacet.facetFunctionSelectors(facet?.address as string);
+        //const newSelectors = await diamondLoupeFacet.facetFunctionSelectors(facet?.address as string);
         if (!receipt.status) {
             throw Error(`Diamond upgrade failed: ${tx.hash}`);
         }

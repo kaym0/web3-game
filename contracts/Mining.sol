@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -8,53 +8,113 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "./interfaces/ICharacters.sol";
 import "./interfaces/ITradeskillToken.sol";
 import "./access/Operator.sol";
+import "./interfaces/ITradeskill.sol";
 
-contract Mining is ERC721, IERC721Receiver, ERC721Holder {
+contract Mining is ERC721, IERC721Receiver, ERC721Holder, ITradeskill {
     
     address characters;
-    address ore;
+    ITradeskillToken ore;
 
     mapping (uint256 => address) owners;
-    mapping (uint256 => uint256) lastBlockUpdated;
+    mapping (uint256 => uint256) lastTimeUpdated;
 
-    event BegunMining(uint256 characterId);
-    event StoppedMining(uint256 characterId);
+    uint256 baseSpeed = 10e18;
 
     error NotOwner();
 
-    constructor() ERC721("Lunarium", "Lunarium") {
-
+    constructor(address _ore, address _characters) ERC721("Lunarium", "Lunarium") {
+        characters = _characters;
+        ore = ITradeskillToken(_ore);
     }
 
-    function collect(uint256 characterId) external {   
+    //// One stamina = 10 seconds
+
+    function getHourlyExperience(uint256 cid) external view override returns (uint256) {
+        Character memory character = ICharacters(characters).getCharacter(cid);
+        uint256 characterSpeed = baseSpeed - (baseSpeed * (character.multipliers.speed - 1e18) / 1e18);
+
+        uint256 actionsPerHour = 3600e18 / characterSpeed;
+
+        return 1e17 * actionsPerHour;
+    }
+
+    function getHourlyMaterials(uint256 cid) external view override returns (uint256) {
+        Character memory character = ICharacters(characters).getCharacter(cid);
+        uint256 characterSpeed = baseSpeed - (baseSpeed * (character.multipliers.speed - 1e18) / 1e18);
+
+        uint256 actionsPerHour = 3600e18 / characterSpeed;
+
+        return (((character.level/5) + 1) * actionsPerHour) * 1e18;
+    }
+
+    function getAvailableExperience(uint256 cid) public view override returns (uint256 experienceGained) {
+        (experienceGained,) = getAvailableExpAndMaterials(cid);
+    }
+
+    function getAvailableMaterials(uint256 cid) public view override returns (uint256 materialsGained) {
+        (,materialsGained) = getAvailableExpAndMaterials(cid);
+    }
+
+    function getAvailableExpAndMaterials(uint256 cid) public view override returns (uint256 expGained, uint256 materialsGained) {
+        Character memory character = ICharacters(characters).getCharacter(cid);
+
+        uint lastUpdate = lastTimeUpdated[cid];
+
+        uint256 characterSpeed = baseSpeed - (baseSpeed * (character.multipliers.speed - 1e18) / 1e18);
+
+        uint256 timeSinceLast = character.stamina * 10  > block.timestamp - lastUpdate ? block.timestamp - lastUpdate : character.stamina * 10;
+
+        uint256 actionsSinceLast = timeSinceLast * 1e18 / characterSpeed;
+
+        expGained  = actionsSinceLast * 1e17;
+        materialsGained = (((character.level/5) + 1) * actionsSinceLast) * 1e18;
+    }
+
+    function collect(uint256 characterId) override external {   
         if (owners[characterId] != _msgSender()) revert NotOwner();
         Character memory character = ICharacters(characters).getCharacter(characterId);
 
-        uint256 timeSinceLast = block.number - lastBlockUpdated[characterId];
+        // Calculates character mining speed based on their multipliers.
+        uint256 characterSpeed = (baseSpeed - ((baseSpeed * character.multipliers.speed) / 1e18) / 2);
+        /// Calculates the effective time since last claim; If the users effective stamina time is greater than the actual time, the actual time is used.
+        /// If the stamina is less than, the stamina is used. This is to limit based on stamina amounts,
+        uint256 timeSinceLast = character.stamina * 10  > block.timestamp - lastTimeUpdated[characterId] ? block.timestamp - lastTimeUpdated[characterId] : character.stamina * 10;
+
+        uint256 actionsSinceLast = timeSinceLast * 1e18 / characterSpeed;
 
         /// Assuming an average block length of ~1-2 seconds
-        uint256 totalMined = character.level * 1e18 * 50 * timeSinceLast / 43200;
+        uint256 totalMined = (((character.level/5) + 1) * actionsSinceLast) * 1e18;
 
-        ITradeskillToken(ore).mintTo(_msgSender(), totalMined);
+        uint experienceGained = actionsSinceLast * 1e17;
 
-        lastBlockUpdated[characterId] = block.number;
+        ore.mintTo(_msgSender(), totalMined);
+
+        ICharacters(characters).gainTradeExperience(character.id, 0, experienceGained );
+
+        lastTimeUpdated[characterId] = block.timestamp;
     }
 
-    function mine(uint256 characterId) external {
-        IERC721(characters).transferFrom(_msgSender(), address(this), characterId);
+    function start(uint256 cid) external override {
+        IERC721(characters).transferFrom(_msgSender(), address(this), cid);
 
-        owners[characterId] = _msgSender();
+        owners[cid] = _msgSender();
 
-        lastBlockUpdated[characterId] = block.number;
+        lastTimeUpdated[cid] = block.timestamp;
 
-        emit BegunMining(characterId);
+        _mint(msg.sender, cid);
+
+        emit TradeskillActive(0, cid);
     }
 
-    function stop(uint256 characterId) external {
-        if (owners[characterId] != _msgSender()) revert();
+    function stop(uint256 cid) external override {
+        if (owners[cid] != _msgSender()) revert();
 
-        IERC721(characters).transferFrom(address(this), _msgSender(), characterId);
+        _burn(cid);
+        
+        IERC721(characters).transferFrom(address(this), _msgSender(), cid);
 
-        delete owners[characterId];
+        delete owners[cid];
+
+        emit TradeskillInactive(0, cid);
     }
 }

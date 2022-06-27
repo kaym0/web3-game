@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -165,6 +165,7 @@ contract Guild is ERC721, Ownable {
 
         emit BankWithdrawl(msg.sender, amount);
     }
+    
     /**
      *
      *  @dev Upgrades a specific boost for a price paid in gems. The currency is spent from the guild wallet.

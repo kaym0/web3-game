@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity ^0.8.10;
 
 import "./Equipment/token/ERC721/extensions/ERC721AQueryable.sol";
 import "./Equipment/token/ERC721/IERC721A.sol";
