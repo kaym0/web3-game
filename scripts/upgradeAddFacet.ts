@@ -10,7 +10,7 @@ const FacetAddresses = ["0x9f9D6Fdfb1Da8ABD6F363Aa1fED939944Bd71F5c"];
 async function deploy() {
     const diamond = await getContractInstance(
         "CharacterDiamond",
-        "0x9f9D6Fdfb1Da8ABD6F363Aa1fED939944Bd71F5c"
+        "0x608f737f39F6a7b74A3ab1D5Fc2c2bb0c6fB0c3d"
     );
 
     const diamondLoupeFacet = await getContractInstance(

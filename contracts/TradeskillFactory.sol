@@ -12,7 +12,7 @@ import "./interfaces/ICharacters.sol";
 import "./interfaces/ITradeskillToken.sol";
 import "./interfaces/ITradeskill.sol";
 
-contract TradeskillFactory is ERC721, Operator, ITradeskill {
+contract TradeskillFactory is ERC721Enumerable, Operator, ITradeskill {
     address public characters;
 
     mapping (uint256 => uint256) public lastTimeUpdated;
@@ -30,6 +30,27 @@ contract TradeskillFactory is ERC721, Operator, ITradeskill {
 
     constructor(address _characters ) ERC721("Tradeskill", "TradeSkill") {
         characters = _characters;
+    }
+
+
+    /**
+     *  Fetches all characters of an owner, returning with them the tradeskill in which it's staked.
+     *  This is expected to be incredibly heavy on gas and this will be removed for alternative
+     *  methods in the future.
+     */
+    function getOwnedCharacters(address owner) external view returns (Character[] memory, uint256[] memory) {
+        uint256 tokensOwned = balanceOf(owner);
+
+        Character[] memory owned = new Character[](tokensOwned);
+        uint256[] memory charactersInTradeskill = new uint256[](tokensOwned);
+
+        for (uint i; i < tokensOwned; i++) {
+            uint256 id = tokenOfOwnerByIndex(owner,i);
+            owned[i] = ICharacters(characters).getCharacter(id);
+            charactersInTradeskill[i] = characterLocation[id];
+        }
+
+        return (owned, charactersInTradeskill);
     }
 
     /**
@@ -63,7 +84,7 @@ contract TradeskillFactory is ERC721, Operator, ITradeskill {
      *  @dev Fetches the hourly experience a character will receive.
      *
      */
-    function getHourlyExperience(uint256 cid) external view override returns (uint256) {
+    function getHourlyExperience(uint256 cid, uint256 skillId) external view override returns (uint256) {
         Character memory character = ICharacters(characters).getCharacter(cid);
 
         uint256 characterSpeed = baseSpeed - (baseSpeed * (character.multipliers.speed - 1e18) / 1e18);
@@ -78,10 +99,9 @@ contract TradeskillFactory is ERC721, Operator, ITradeskill {
      *  @dev Fetches the hourly amount of materials a character will receive.
      *
      */
-    function getHourlyMaterials(uint256 cid) external view override returns (uint256) {
+    function getHourlyMaterials(uint256 cid, uint256 skillId) external view override returns (uint256) {
         Character memory character = ICharacters(characters).getCharacter(cid);
-        uint256 skillId = characterLocation[cid];
-
+        
         uint256 characterSpeed = baseSpeed - (baseSpeed * (character.multipliers.speed - 1e18) / 1e18);
 
         uint256 actionsPerHour = 3600e18 / characterSpeed;
@@ -136,6 +156,25 @@ contract TradeskillFactory is ERC721, Operator, ITradeskill {
 
         expGained  = actionsSinceLast * 1e17;
         materialsGained =  _totalMaterials(skillId, character, actionsSinceLast);
+    }
+
+    /**
+     *
+     *  @dev Fetches values that are associated with the characters stamina; This is designed to simplify the front-end logic when determining
+     *  how much time a character has been battling.
+     *
+     *  @param cid - The character ID to query.
+     *
+     *  @return lastTimeUpdated - The last block where the character restored their stamina.
+     *
+     *  @return currentBlock - The current block number.
+     *
+     */
+    function characterBlockInfo(uint256 cid) external view returns (uint256, uint256) {
+        return (
+            lastTimeUpdated[cid],
+            block.timestamp
+        );
     }
 
     function collect(uint256 cid) external override {   

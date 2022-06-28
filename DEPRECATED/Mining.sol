@@ -103,7 +103,7 @@ contract Mining is ERC721, IERC721Receiver, ERC721Holder, ITradeskill {
 
         _mint(msg.sender, cid);
 
-        emit TradeskillActive(0, cid);
+        //emit TradeskillActive(0, cid);
     }
 
     function stop(uint256 cid) external override {
@@ -115,6 +115,6 @@ contract Mining is ERC721, IERC721Receiver, ERC721Holder, ITradeskill {
 
         delete owners[cid];
 
-        emit TradeskillInactive(0, cid);
+        //emit TradeskillInactive(0, cid);
     }
 }
